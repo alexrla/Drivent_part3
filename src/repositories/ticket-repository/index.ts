@@ -15,6 +15,7 @@ async function findTickeyById(ticketId: number) {
     }
   });
 }
+
 async function findTickeWithTypeById(ticketId: number) {
   return prisma.ticket.findFirst({
     where: {
@@ -28,6 +29,17 @@ async function findTickeWithTypeById(ticketId: number) {
 
 async function findTicketByEnrollmentId(enrollmentId: number) {
   return prisma.ticket.findFirst({
+    where: {
+      enrollmentId,
+    },
+    include: {
+      TicketType: true, //inner join
+    }
+  });
+}
+
+async function findTicketsByEnrollmentId(enrollmentId: number) {
+  return prisma.ticket.findMany({
     where: {
       enrollmentId,
     },
@@ -61,6 +73,7 @@ export type CreateTicketParams = Omit<Ticket, "id" | "createdAt" | "updatedAt">
 const ticketRepository = {
   findTicketTypes,
   findTicketByEnrollmentId,
+  findTicketsByEnrollmentId,
   createTicket,
   findTickeyById,
   findTickeWithTypeById,

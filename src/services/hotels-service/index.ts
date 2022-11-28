@@ -1,36 +1,51 @@
 import { notFoundError } from "@/errors";
 import hotelRepository from "@/repositories/hotel-repository";
+import enrollmentRepository from "@/repositories/enrollment-repository";
 import ticketRepository from "@/repositories/ticket-repository";
 
-async function returnHotels() {
-  const ticketsPaidWithAccommodation = await ticketRepository.findTicketTypes();
+async function returnHotels(userId: number) {
+  if(await verifyTicketsPaidWithAccommodation(userId)) {
+    const result = await hotelRepository.findHotels();
 
-  let ticketExists = false;
+    return result;
+  }
+}
 
-  for(let i = 0; i < ticketsPaidWithAccommodation.length; i++)  {
-    if(ticketsPaidWithAccommodation[i].includesHotel && !ticketsPaidWithAccommodation[i].isRemote)  {
-      ticketExists = true;
+async function returnHotelWithRooms(userId: number, hotelId: number)  {
+  if(await verifyTicketsPaidWithAccommodation(userId)) {
+    const result = await hotelRepository.findHotelWithRoomsById(hotelId);
+
+    if(!result) throw notFoundError();
+
+    return result;
+  }
+}
+
+async function verifyTicketsPaidWithAccommodation(userId: number) {
+  const verifyEnrollment = await enrollmentRepository.findWithAddressByUserId(userId);
+
+  if(!verifyEnrollment) throw notFoundError();
+
+  const verifyTicket = await ticketRepository.findTicketsByEnrollmentId(verifyEnrollment.id);
+
+  if(verifyTicket.length === 0) throw notFoundError();
+
+  let ticketNotExists = true;
+
+  for(let i = 0; i < verifyTicket.length; i++)  {
+    if(
+      verifyTicket[i].status === "PAID" &&
+      verifyTicket[i].TicketType.includesHotel &&
+      !verifyTicket[i].TicketType.isRemote
+    ) {
+      ticketNotExists = false;
       break;
     }
   }
 
-  if(ticketExists) throw notFoundError();
+  if(ticketNotExists) throw notFoundError();
 
-  const result = await hotelRepository.findHotels();
-
-  if(!result) throw notFoundError();
-
-  return result;
-}
-
-async function returnHotelWithRooms(hotelId: number)  {
-  await returnHotels();
-
-  const result = await hotelRepository.findHotelWithRoomsById(hotelId);
-
-  if(!result) throw notFoundError();
-
-  return result;
+  return true;
 }
 
 const hotelsService = {
